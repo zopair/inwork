@@ -1,0 +1,11 @@
+{
+  "project_name": "In Work",
+  "version": "1.0.0",
+  "environment": "production",
+  "features": {
+    "ai_matching": true,
+    "realtime_chat": true,
+    "automated_seo": true
+  },
+  "deployment": "Cloudflare Pages & GitHub Actions"
+}
