@@ -1,9 +1,7 @@
-grok
+# In Work Platform 🚀
+> منصة وخدمات ذكية لربط الحرفيين والعملاء بأعلى معايير الأتمتة والذكاء الاصطناعي.
 
-<!-- Verified via Grok Automation Engine -->
-
-<!-- Verified via Claude Automation Engine -->
-
-<!-- Verified via ChatGPT Automation Engine -->
-
-<!-- Verified via Gemini Sovereign Automation Engine -->
+## المكونات المرتبطة:
+- **Web Platform:** Next.js / Tailwind
+- **Mobile App:** Flutter Architecture
+- **Intelligence Engine:** Integrated via GitHub & Colab Automation
