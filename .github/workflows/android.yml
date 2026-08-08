@@ -1,0 +1,33 @@
+name: InWork Android APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Prepare web assets
+        run: |
+          mkdir -p android/app/src/main/assets/web
+          cp index.html android/app/src/main/assets/web/index.html
+          cp manifest.webmanifest android/app/src/main/assets/web/manifest.webmanifest
+          cp sw.js android/app/src/main/assets/web/sw.js
+      - name: Build debug APK
+        working-directory: android
+        run: gradle :app:assembleDebug --no-daemon
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: InWork-beta-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
