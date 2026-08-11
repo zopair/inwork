@@ -4,7 +4,26 @@ on:
     branches: [main]
   workflow_dispatch:
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate mobile JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('mobile/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
+          Path('/tmp/inwork.js').write_text('\n'.join(scripts),encoding='utf-8')
+          print('Extracted JS:', len(scripts), 'script blocks')
+          PY
+          node --check /tmp/inwork.js
   build:
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,7 +39,7 @@ jobs:
       - name: Prepare web assets
         run: |
           mkdir -p android/app/src/main/assets/web
-          cp index.html android/app/src/main/assets/web/index.html
+          cp mobile/index.html android/app/src/main/assets/web/index.html
           cp manifest.webmanifest android/app/src/main/assets/web/manifest.webmanifest
           cp sw.js android/app/src/main/assets/web/sw.js
       - name: Build debug APK
@@ -29,5 +48,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: InWork-beta-apk
+          name: InWork-complete-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
