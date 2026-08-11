@@ -23,22 +23,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
-
       - name: Install Chromium
         run: npx playwright install chromium
-
       - name: Run browser E2E
-        run: npm run test:e2e
-
+        run: npx playwright test --config=playwright.ci.config.js
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,18 +51,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-
       - name: Prepare bundled web assets
         shell: bash
         run: |
@@ -76,11 +68,9 @@ jobs:
           cp index.html android/app/src/main/assets/web/index.html
           cp manifest.webmanifest android/app/src/main/assets/web/manifest.webmanifest
           cp sw.js android/app/src/main/assets/web/sw.js
-
       - name: Build APK
         working-directory: android
         run: gradle :app:assembleDebug --no-daemon
-
       - name: Start Android emulator and test APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -100,7 +90,6 @@ jobs:
             grep -E 'InWork|فرص|شغل|ابدأ' inwork-window.xml
             adb exec-out screencap -p > inwork-emulator.png
             adb logcat -d > inwork-logcat.txt
-
       - name: Upload Android smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
