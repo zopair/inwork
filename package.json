@@ -1,0 +1,12 @@
+{
+  "name": "inwork",
+  "private": true,
+  "version": "0.1.1",
+  "description": "InWork open-source web and Android application",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0"
+  }
+}
