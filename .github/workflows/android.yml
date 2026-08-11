@@ -11,13 +11,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Validate mobile JavaScript
+      - name: Validate main application JavaScript
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
-          html=Path('mobile/index.html').read_text(encoding='utf-8')
+          html=Path('index.html').read_text(encoding='utf-8')
           scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
+          if not scripts:
+            raise SystemExit('No JavaScript found in index.html')
           Path('/tmp/inwork.js').write_text('\n'.join(scripts),encoding='utf-8')
           print('Extracted JS:', len(scripts), 'script blocks')
           PY
@@ -38,8 +40,9 @@ jobs:
           gradle-version: '8.11.1'
       - name: Prepare web assets
         run: |
+          rm -rf android/app/src/main/assets
           mkdir -p android/app/src/main/assets/web
-          cp mobile/index.html android/app/src/main/assets/web/index.html
+          cp index.html android/app/src/main/assets/web/index.html
           cp manifest.webmanifest android/app/src/main/assets/web/manifest.webmanifest
           cp sw.js android/app/src/main/assets/web/sw.js
       - name: Build debug APK
@@ -48,5 +51,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: InWork-complete-debug-apk
+          name: InWork-fixed-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
