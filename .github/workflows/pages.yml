@@ -19,8 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/configure-pages@v5
+      - name: Assemble web app
+        run: |
+          mkdir -p site
+          cp mobile/index.html site/index.html
+          cp manifest.webmanifest site/manifest.webmanifest
+          cp sw.js site/sw.js
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4
