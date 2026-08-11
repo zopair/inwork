@@ -42,9 +42,26 @@ jobs:
           path: playwright-report/
           if-no-files-found: ignore
 
+  backend:
+    name: Backend Smoke Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install --disable-pip-version-check -r requirements.txt
+      - name: Run backend smoke tests
+        working-directory: backend
+        run: python -m unittest test_smoke.py -v
+
   android-emulator:
     name: Android Emulator Smoke Test
-    needs: web-e2e
+    needs: [web-e2e, backend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
