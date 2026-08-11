@@ -1,0 +1,48 @@
+name: InWork Self-Heal
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  browser-runtime-repair:
+    # Prevent a repair commit from recursively repairing itself.
+    if: ${{ !contains(github.event.head_commit.message, '[self-heal]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repair browser-global name collision
+        shell: bash
+        run: |
+          perl -0pi -e 's/function top\(/function topBar(/g; s/\$\{top\(/\$\{topBar(/g' index.html
+
+      - name: Verify JavaScript syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>', html, re.S)
+          Path('/tmp/inwork.js').write_text('\n'.join(scripts), encoding='utf-8')
+          print('script blocks:', len(scripts))
+          PY
+          node --check /tmp/inwork.js
+
+      - name: Commit repair when needed
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No repair needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: remove browser global collision [self-heal]'
+          git push
