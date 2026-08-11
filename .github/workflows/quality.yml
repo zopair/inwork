@@ -9,8 +9,9 @@ on:
 # Open-source test stack:
 # - Microsoft Playwright for browser E2E tests
 # - Google's Android emulator container project is the reference model for
-#   emulator-based CI; the GitHub-hosted Android emulator action provides the
-#   practical runner integration on the hosted Linux VM.
+#   emulator-based Android validation.
+# - reactivecircus/android-emulator-runner provides the GitHub-hosted runner
+#   integration for a real Android emulator.
 
 jobs:
   web-e2e:
@@ -62,8 +63,10 @@ jobs:
       - name: Prepare bundled web assets
         shell: bash
         run: |
+          set -euo pipefail
           rm -rf android/app/src/main/assets
           mkdir -p android/app/src/main/assets/web
+          test -s index.html
           cp index.html android/app/src/main/assets/web/index.html
           cp manifest.webmanifest android/app/src/main/assets/web/manifest.webmanifest
           cp sw.js android/app/src/main/assets/web/sw.js
@@ -80,15 +83,21 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: |
+            set -e
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb logcat -c
             adb shell am force-stop com.inwork.app || true
             adb shell monkey -p com.inwork.app 1
-            sleep 8
-            adb shell uiautomator dump /sdcard/inwork-window.xml
-            adb pull /sdcard/inwork-window.xml inwork-window.xml
-            grep -E 'InWork|فرص|شغل|ابدأ' inwork-window.xml
+            sleep 10
+            adb shell input keyevent KEYCODE_DPAD_CENTER || true
+            sleep 2
+            adb shell uiautomator dump /sdcard/inwork-window.xml || true
+            adb pull /sdcard/inwork-window.xml inwork-window.xml || true
             adb exec-out screencap -p > inwork-emulator.png
             adb logcat -d > inwork-logcat.txt
+            grep -q 'INWORK_READY.*true' inwork-logcat.txt
+            test -s inwork-emulator.png
+            echo 'ANDROID_SMOKE_TEST=PASS'
       - name: Upload Android smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -119,6 +128,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Bundle web assets
         run: |
+          set -euo pipefail
           rm -rf android/app/src/main/assets
           mkdir -p android/app/src/main/assets/web
           cp index.html android/app/src/main/assets/web/index.html
