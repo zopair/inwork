@@ -56,6 +56,12 @@ public class MainActivity extends Activity {
       @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
         return handleUrl(url);
       }
+      @Override public void onPageFinished(WebView view, String url) {
+        super.onPageFinished(view, url);
+        view.evaluateJavascript("(function(){var a=document.getElementById('app');return JSON.stringify({ready:!!a,children:a?a.children.length:0,title:document.title});})()", value -> {
+          Log.i("InWork", "INWORK_READY " + value);
+        });
+      }
       @Override public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
         Log.e("InWork", "WebView error " + errorCode + ": " + description + " @ " + failingUrl);
       }
