@@ -12,7 +12,7 @@ from .auth import (
     register_user, revoke_session, _password_hash,
 )
 from .marketplace import (
-    MarketplaceError, accept_request, cancel_request, create_request,
+    MarketplaceError, accept_request, cancel_request, create_request, create_review,
     get_request_contact, list_categories, list_user_requests,
     list_worker_requests, search_workers, share_request_contact,
     transition_request, update_worker_profile,
@@ -107,6 +107,11 @@ class WorkerProfileInput(BaseModel):
 
 class StatusInput(BaseModel):
     status: str
+
+
+class ReviewInput(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=1000)
 
 
 class BootstrapInput(BaseModel):
@@ -245,6 +250,16 @@ def request_status(request_id: int, data: StatusInput, user: dict = Depends(work
     if not changed:
         raise HTTPException(status_code=409, detail="لا يمكن تغيير حالة هذا الطلب")
     return {"id": request_id, "status": data.status}
+
+
+@router.post("/requests/{request_id}/review")
+def request_review(request_id: int, data: ReviewInput, user: dict = Depends(requester),
+                   _: None = Depends(require_same_origin)):
+    try:
+        review_id = create_review(DB_PATH, user["id"], request_id, data.rating, data.comment)
+    except MarketplaceError as exc:
+        _raise_domain(exc)
+    return {"review_id": review_id, "status": "submitted"}
 
 
 @router.post("/requests/{request_id}/cancel")
