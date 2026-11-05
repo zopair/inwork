@@ -55,14 +55,15 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 - [x] Add a portable Dockerfile and persistent Docker Compose volume for self-hosted Coolify/Dokku/CapRover deployment.
 - [x] Add Docker image and Compose validation to CI.
 - [x] Document the provider limits and fallback options.
-- [ ] Run CI on the newest branch head and fix any regressions.
+- [x] Run full CI on code-bearing branch head `1b3f0d8`: 15 backend tests, 2 Playwright E2E tests, Docker image build, Compose validation, and Render YAML parsing all passed.
 - [ ] Create the Turso database and place its URL/token into Render's secret fields.
 - [ ] Connect the repository to Render and deploy the Blueprint.
 - [ ] Open the Render service URL; same-origin API routing requires no extra frontend configuration.
-- [ ] Verify `/health`, registration, login, logout, session persistence, worker profile, geospatial search, request lifecycle, and consent-gated contact.
+- [ ] Deploy the Render Blueprint after Turso credentials are supplied; then verify `/health`, registration, login, logout, session persistence, worker profile, geospatial search, request lifecycle, and consent-gated contact.
 - [ ] Run a two-worker acceptance race against the hosted database and verify exactly one winner.
 - [ ] Verify data survives service sleep/restart and redeployment.
 - [ ] Create a backup/export and perform a restore test before any real users.
+- [x] Build the Android debug APK from the same root `index.html` asset; device/emulator runtime testing remains open.
 - [ ] Decide whether the temporary preview is sufficient or move to a self-hosted VM + Coolify/Dokku for a more durable always-on service.
 
 ## Fallback ladder
@@ -99,3 +100,5 @@ The isolated GitHub Pages preview workflow was run and failed at `actions/config
 - Google Cloud Free Tier requirements and E2-micro limits: https://docs.cloud.google.com/free/docs/free-cloud-features
 
 Keep Render's payment method unset for a strict no-charge preview. Its free service is not suitable for production: the instance sleeps after inactivity, has no persistent local disk, and may be suspended when included usage is exhausted. Turso's free plan includes one day of point-in-time restore only; export backups independently before any real user data is accepted.
+
+Latest CI evidence: [quality run](https://github.com/zopair/inwork/actions/runs/42086525517) and [Android APK build](https://github.com/zopair/inwork/actions/runs/42086525698). The Android artifact is available from the run's Artifacts section.
