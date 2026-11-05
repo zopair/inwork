@@ -51,6 +51,7 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 - [x] Add an optional remote Turso DB-API connection path.
 - [x] Add a unit test for selecting the remote adapter and requiring its auth token.
 - [x] Add a Render Blueprint for a same-origin UI + API preview, backed by remote Turso rather than ephemeral local files.
+- [x] Pin the Render Python runtime to 3.12, matching the tested CI runtime, rather than relying on Render's changing default.
 - [x] Add a portable Dockerfile and persistent Docker Compose volume for self-hosted Coolify/Dokku/CapRover deployment.
 - [x] Add Docker image and Compose validation to CI.
 - [x] Document the provider limits and fallback options.
@@ -88,6 +89,7 @@ The isolated GitHub Pages preview workflow was run and failed at `actions/config
 - Render Free service limits and ephemeral storage: https://render.com/docs/free
 - Render billing behavior for free services: https://render.com/docs/faq (if a payment method is attached, overages can be billed; without one, Render disables affected services instead of charging).
 - Render Blueprint syntax and `checksPass`: https://render.com/docs/blueprint-spec
+- Render Python runtime version pinning: https://render.com/docs/python-version
 - Render one-click Blueprint deployment: https://render.com/docs/deploy-to-render
 - Turso current Free plan and quotas: https://turso.tech/pricing
 - Turso Python quickstart and `turso_serverless` usage: https://github.com/tursodatabase/turso-docs/blob/main/sdk/python/quickstart.mdx
