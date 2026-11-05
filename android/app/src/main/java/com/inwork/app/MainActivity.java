@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
       }
       @Override public void onPageFinished(WebView view, String url) {
         super.onPageFinished(view, url);
-        view.evaluateJavascript("(function(){var a=document.getElementById('app');return JSON.stringify({ready:!!a,children:a?a.children.length:0,title:document.title});})()", value -> {
+        view.evaluateJavascript("(function(){var a=document.getElementById('view')||document.querySelector('.app');return JSON.stringify({ready:!!a,children:a?a.children.length:0,title:document.title});})()", value -> {
           Log.i("InWork", "INWORK_READY " + value);
         });
       }
