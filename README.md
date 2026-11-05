@@ -25,6 +25,17 @@ InWork is not a job-listing website. It has two primary roles:
 
 ## Local backend
 
+### Run with Docker Compose
+
+```bash
+cp .env.example .env
+# Replace INWORK_ADMIN_BOOTSTRAP_TOKEN in .env with a unique random secret.
+docker compose up --build -d
+```
+
+Open `http://localhost:8000`. The Compose volume persists SQLite at `/data/inwork.sqlite3`. For a public server, put the container behind HTTPS using an open-source reverse proxy/PaaS such as Coolify, Dokku, or CapRover; keep the volume mounted and never expose the database file directly.
+
+
 ```bash
 cd backend
 python -m venv .venv
