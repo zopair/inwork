@@ -47,7 +47,7 @@ jobs:
           python-version: '3.12'
       - name: Install backend dependencies
         working-directory: backend
-        run: pip install --disable-pip-version-check -r requirements.txt
+        run: pip install --disable-pip-version-check -r requirements-dev.txt
       - name: Run all backend tests
         working-directory: backend
         run: python -m unittest discover -v
