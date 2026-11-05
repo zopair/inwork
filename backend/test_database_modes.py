@@ -35,6 +35,13 @@ class DatabaseModeTests(unittest.TestCase):
                     local.assert_not_called()
         self.assertTrue(fake.closed)
 
+    def test_remote_database_is_required_when_host_policy_enables_it(self):
+        with patch.dict(os.environ, {"INWORK_REQUIRE_REMOTE_DB": "true"}, clear=False):
+            os.environ.pop("TURSO_DATABASE_URL", None)
+            with self.assertRaisesRegex(RuntimeError, "TURSO_DATABASE_URL"):
+                with connect():
+                    pass
+
     def test_remote_turso_requires_auth_token(self):
         with patch.dict(os.environ, {"TURSO_DATABASE_URL": "libsql://inwork-test.turso.io"}, clear=False):
             os.environ.pop("TURSO_AUTH_TOKEN", None)
