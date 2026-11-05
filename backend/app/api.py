@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from .auth import (
@@ -164,8 +164,8 @@ def categories():
 
 
 @router.get("/workers/search")
-def workers_search(category_id: int, latitude: float = Field(ge=-90, le=90),
-                   longitude: float = Field(ge=-180, le=180), radius_km: float = 15):
+def workers_search(category_id: int, latitude: float = Query(ge=-90, le=90),
+                   longitude: float = Query(ge=-180, le=180), radius_km: float = Query(default=15, ge=1, le=100)):
     try:
         return {"workers": search_workers(DB_PATH, category_id, latitude, longitude, radius_km)}
     except MarketplaceError as exc:
