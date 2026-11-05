@@ -44,6 +44,10 @@ class MarketplaceApiIntegrationTests(unittest.TestCase):
 
     def test_authentication_required_and_admin_self_signup_blocked(self):
         self.assertEqual(self.client.get("/v1/requests/mine").status_code, 401)
+        self.assertEqual(
+            self.client.get("/v1/workers/search?category_id=1&latitude=30&longitude=31").status_code,
+            401,
+        )
         self.assertEqual(self.register("admin@example.test", "admin").status_code, 400)
         self.assertEqual(
             self.client.post("/v1/auth/register", json={
