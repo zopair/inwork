@@ -8,6 +8,7 @@ from .marketplace import connect, utc_now
 PBKDF2_ROUNDS = 310_000
 SESSION_DAYS = 7
 MAX_LOGIN_FAILURES = 5
+DUMMY_PASSWORD_HASH = "pbkdf2_sha256$310000$00112233445566778899aabbccddeeff$" + hashlib.pbkdf2_hmac("sha256", b"not-a-real-password", bytes.fromhex("00112233445566778899aabbccddeeff"), 310000).hex()
 LOCKOUT_MINUTES = 15
 
 class AuthenticationError(ValueError):
@@ -107,11 +108,13 @@ def login(db_path: str, email: str, password: str, ip_address: str) -> tuple[dic
             """SELECT u.id,u.role,u.display_name,u.is_active,a.password_hash
                FROM user_auth a JOIN users u ON u.id=a.user_id WHERE a.email=? COLLATE NOCASE""",
             (email_key,)).fetchone()
-        valid = bool(row and row["is_active"] and _verify_password(password, row["password_hash"]))
+        password_ok = _verify_password(password, row["password_hash"] if row else DUMMY_PASSWORD_HASH)
+        valid = bool(row and row["is_active"] and password_ok)
         conn.execute("INSERT INTO auth_login_attempts (email_key,ip_key,succeeded,attempted_at) VALUES (?,?,?,?)",
                      (email_key, ip_key, 1 if valid else 0, now))
         conn.execute("DELETE FROM auth_login_attempts WHERE attempted_at<?", (_utc_after(minutes=-1440),))
         if not valid:
+            conn.commit()  # Persist failed attempts before returning the generic error.
             raise AuthenticationError("بيانات الدخول غير صحيحة")
         token = secrets.token_urlsafe(32)
         conn.execute("INSERT INTO auth_sessions (token_hash,user_id,expires_at,created_at) VALUES (?,?,?,?)",
