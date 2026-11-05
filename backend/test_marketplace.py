@@ -35,8 +35,8 @@ class MarketplaceDomainTests(unittest.TestCase):
             for worker_id in ("worker-1", "worker-2"):
                 conn.execute(
                     """INSERT INTO worker_profiles
-                       (user_id, category_id, is_available, whatsapp_private, updated_at)
-                       VALUES (?, 1, 1, 'PRIVATE_NUMBER', '2026-01-01T00:00:00+00:00')""",
+                       (user_id, category_id, latitude, longitude, is_available, whatsapp_private, updated_at)
+                       VALUES (?, 1, 30.0444, 31.2357, 1, 'PRIVATE_NUMBER', '2026-01-01T00:00:00+00:00')""",
                     (worker_id,),
                 )
                 conn.execute(
