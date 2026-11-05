@@ -12,7 +12,7 @@ From the repository root:
 
 ```bash
 cp .env.example .env
-# Set a unique INWORK_ADMIN_BOOTSTRAP_TOKEN in .env.
+# Generate a unique token with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and put it in `.env`.
 docker compose up --build -d
 ```
 
