@@ -52,7 +52,7 @@ The email address is currently an account identifier, not a verified identity. E
 - `POST /v1/requests`, `GET /v1/requests/mine`, `POST /v1/requests/{id}/cancel`
 - `GET /v1/workers/search?category_id=&latitude=&longitude=&radius_km=`
 - `PUT /v1/worker/profile`, `GET /v1/worker/requests`
-- `POST /v1/requests/{id}/accept`, `POST /v1/requests/{id}/status`
+- `POST /v1/requests/{id}/accept`, `POST /v1/requests/{id}/status`, `POST /v1/requests/{id}/review`
 - `POST /v1/requests/{id}/share-contact`, `GET /v1/requests/{id}/contact`
 - `POST /v1/worker/subscription`, `GET /v1/admin/subscriptions/pending`, `POST /v1/admin/subscriptions/{id}/verify`
 - `POST /v1/admin/bootstrap`, `POST /v1/admin/categories`
