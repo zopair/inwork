@@ -178,7 +178,8 @@ def categories():
 
 @router.get("/workers/search")
 def workers_search(category_id: int, latitude: float = Query(ge=-90, le=90),
-                   longitude: float = Query(ge=-180, le=180), radius_km: float = Query(default=15, ge=1, le=100)):
+                   longitude: float = Query(ge=-180, le=180), radius_km: float = Query(default=15, ge=1, le=100),
+                   user: dict = Depends(requester)):
     try:
         return {"workers": search_workers(DB_PATH, category_id, latitude, longitude, radius_km)}
     except MarketplaceError as exc:
