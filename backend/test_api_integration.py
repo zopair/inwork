@@ -82,6 +82,34 @@ class MarketplaceApiIntegrationTests(unittest.TestCase):
         self.assertEqual(category.status_code, 200, category.text)
         self.assertEqual(category.json()["name_ar"], "سباك")
 
+        worker_client = TestClient(app)
+        worker_client.__enter__()
+        try:
+            worker = worker_client.post(
+                "/v1/auth/register", headers={"X-InWork-Request": "1"},
+                json={"email": "sub-worker@example.test", "password": "Correct-Horse-Battery-12!",
+                      "display_name": "مقدم خدمة", "role": "worker", "category_id": 1})
+            self.assertEqual(worker.status_code, 200, worker.text)
+            pending = worker_client.post("/v1/worker/subscription", headers={"X-InWork-Request": "1"})
+            self.assertEqual(pending.status_code, 200, pending.text)
+            pending_id = pending.json()["subscription_id"]
+            listed = self.client.get("/v1/admin/subscriptions/pending")
+            self.assertEqual(listed.status_code, 200, listed.text)
+            self.assertEqual(listed.json()["subscriptions"][0]["id"], pending_id)
+            verified = self.client.post(
+                "/v1/admin/subscriptions/" + str(pending_id) + "/verify",
+                headers={"X-InWork-Request": "1"})
+            self.assertEqual(verified.status_code, 200, verified.text)
+            with connect(self.db_path) as conn:
+                row = conn.execute(
+                    "SELECT status, amount_egp, verified_by FROM subscriptions WHERE id=?",
+                    (pending_id,)).fetchone()
+            self.assertEqual(row["status"], "active")
+            self.assertEqual(row["amount_egp"], 100)
+            self.assertIsNotNone(row["verified_by"])
+        finally:
+            worker_client.__exit__(None, None, None)
+
     def test_login_failures_are_rate_limited(self):
         self.register("lockout@example.test", "requester")
         for _ in range(5):
