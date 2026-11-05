@@ -16,7 +16,7 @@ export INWORK_DB_PATH="$PWD/data/inwork.sqlite3"
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-The API initializes the SQLite schema on startup. Keep `backend/data/` out of Git. For a first local test, open the web client and set its API URL to `http://localhost:8000`. Public deployments must use HTTPS.
+The API initializes the schema on startup. For local development it uses SQLite. If `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are set, it selects the official `turso-serverless` HTTP DB-API driver instead; this avoids depending on a local file system in stateless hosting. Keep `backend/data/` out of Git. For a first local test, open the web client and set its API URL to `http://localhost:8000`. Public deployments must use HTTPS.
 
 ## Frontend/API connection
 
@@ -26,7 +26,8 @@ For a separate HTTPS frontend origin, configure these backend environment variab
 
 - `INWORK_ALLOWED_ORIGINS`: comma-separated exact origins, e.g. `https://zopair.github.io`. Never use `*` with credentialed requests.
 - `INWORK_COOKIE_SAMESITE=none`: required only when the frontend and API are cross-site. HTTPS is then mandatory.
-- `INWORK_DB_PATH`: persistent SQLite file path.
+- `INWORK_DB_PATH`: persistent local SQLite file path; used only when remote Turso is not configured.
+- `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`: optional remote Turso URL/token pair. Both must be configured together; remote mode uses SQLite-compatible SQL and explicit transactions.
 - `INWORK_ADMIN_BOOTSTRAP_TOKEN`: one-time random secret, at least 24 characters, used to create the first administrator.
 
 Prefer serving the API behind the same origin as the frontend. Some browsers block third-party cookies even with `SameSite=None`; if the frontend is on GitHub Pages and the API is on a different site, browser cookie policy may prevent login persistence. A same-site reverse proxy or same-origin hosting is the safer arrangement.
@@ -75,6 +76,29 @@ python -m unittest discover -v
 ```
 
 The backend suite covers password/session behavior, role gates, request lifecycle, concurrent acceptance, geospatial privacy, and contact disclosure. Browser E2E tests cover the Arabic marketplace entry and registration UI. Android APK compilation is validated by the separate Android workflow.
+
+## Free hosting path (preview only)
+
+The repository includes a Render Blueprint at the root (`render.yaml`) that deploys the FastAPI service from `backend/` on the free web-service tier. It is configured for the `service-marketplace-v1` branch, the GitHub Pages origin, HTTPS proxy headers, and `SameSite=None` cookies. Render free instances sleep after 15 minutes of inactivity and have ephemeral local filesystems; therefore the blueprint requires a remote Turso database and does not use Render Postgres (the free Render Postgres plan expires after 30 days).
+
+Setup:
+1. Create a Turso free database and generate an auth token.
+2. Connect this repository to Render and deploy the Blueprint.
+3. Supply `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as secrets.
+4. Copy the resulting Render service URL into the preview UI's API URL field.
+5. Bootstrap the first administrator with `INWORK_ADMIN_BOOTSTRAP_TOKEN`, then remove the secret.
+6. Run the hosted integration checks, especially transaction rollback, atomic acceptance under concurrent requests, session persistence across restarts, and contact privacy.
+
+The Turso serverless Python driver is a beta project. Local CI can verify adapter selection but cannot prove hosted transaction behavior without a real database and credentials. Treat this deployment as a test preview, not production infrastructure.
+
+## Infrastructure alternatives researched
+
+- `coollabsio/coolify`, `dokku/dokku`, `caprover/caprover`, and `Dokploy/dokploy` are open-source deployment control planes. They simplify deployments but do not provide free compute; each still needs a server/VM.
+- `trailbaseio/trailbase` is a compact Rust/SQLite backend with geospatial and auth features, but replacing the existing FastAPI domain layer would be a larger rewrite and its OSL-3.0 license needs review.
+- The old `pocketbase/pocketbase` GitHub organization repository is archived/moved; do not pin new work to that old repository.
+- Oracle Always Free offers useful VM capacity, but account signup requires a credit/debit card and idle instances can be reclaimed. Keep it as an optional self-hosted fallback, not the default no-card route.
+- Google Cloud's E2-micro free allowance requires a billing account, is limited to specified US regions, and includes only 1 GB/month outbound transfer; it is not the preferred zero-card route.
+- GitHub Actions runners are ephemeral CI compute, not persistent application hosting. Do not use workflow schedules or keepalive loops as a substitute for a server.
 
 ## Production blockers / not yet claimed
 
