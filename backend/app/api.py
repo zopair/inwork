@@ -147,19 +147,19 @@ def auth_login(data: LoginInput, request: Request, response: Response,
         _raise_domain(exc)
     response.set_cookie(
         "inwork_session", token, httponly=True, secure=request.url.scheme == "https",
-        samesite="strict", max_age=7 * 24 * 60 * 60, path="/"
+        samesite=os.environ.get("INWORK_COOKIE_SAMESITE", "strict").lower(), max_age=7 * 24 * 60 * 60, path="/"
     )
     return {"user": user}
 
 
 @router.post("/auth/logout")
-def auth_logout(response: Response, user: dict = Depends(current_user),
+def auth_logout(request: Request, response: Response, user: dict = Depends(current_user),
                 inwork_session: Optional[str] = Cookie(None),
                 authorization: Optional[str] = Header(None),
                 _: None = Depends(require_same_origin)):
     token = inwork_session or (authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else "")
     revoke_session(DB_PATH, token or "")
-    response.delete_cookie("inwork_session", path="/", httponly=True, samesite="strict")
+    response.delete_cookie("inwork_session", path="/", httponly=True, samesite=os.environ.get("INWORK_COOKIE_SAMESITE", "strict").lower(), secure=request.url.scheme == "https")
     return {"ok": True}
 
 
