@@ -55,7 +55,7 @@ A Render Blueprint is provided in `render.yaml` for the `service-marketplace-v1`
 2. Click the **Deploy InWork preview to Render** button above (or open [Render Blueprint deployment](https://render.com/deploy?repo=https://github.com/zopair/inwork/tree/service-marketplace-v1)), connect your GitHub account, and review the Blueprint.
 3. Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` when Render prompts for the unsynchronized secrets.
 4. Keep `INWORK_ALLOWED_ORIGINS=https://zopair.github.io` and `INWORK_COOKIE_SAMESITE=none`; the blueprint sets these values.
-5. Open the generated `onrender.com` service URL (the Blueprint names the service `inwork-preview`; the actual hostname is shown by Render). The UI and API share the same origin; leave the optional API URL field empty.
+5. Open the generated `onrender.com` service URL (the Blueprint names the service `inwork-preview`; the actual hostname is shown by Render). The web UI and API share the same origin; leave the optional API URL field empty. The Android WebView uses the fixed origin `https://inwork.local`, which is explicitly allowlisted; enter the Render service URL in the Android app's optional API URL field.
 6. Use `INWORK_ADMIN_BOOTSTRAP_TOKEN` once to create the first admin, then remove that secret from the service environment.
 
 Do not select Render Postgres for durable free storage: its free database expires after 30 days. Do not store SQLite files on a Render free web service; its filesystem is ephemeral.
