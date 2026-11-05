@@ -455,3 +455,31 @@ def cancel_request(db_path: str, requester_id: str, request_id: int) -> bool:
             (request_id, requester_id)
         )
         return result.rowcount == 1
+
+
+def create_review(db_path: str, requester_id: str, request_id: int,
+                  rating: int, comment: str = "") -> int:
+    if rating < 1 or rating > 5:
+        raise MarketplaceError("التقييم يجب أن يكون من 1 إلى 5")
+    if len(comment) > 1000:
+        raise MarketplaceError("التعليق أطول من المسموح")
+    with connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        request = conn.execute(
+            """SELECT worker_id, status FROM service_requests
+               WHERE id=? AND requester_id=?""",
+            (request_id, requester_id)
+        ).fetchone()
+        if not request or request["status"] != "completed" or not request["worker_id"]:
+            raise MarketplaceError("التقييم متاح بعد إتمام الخدمة فقط")
+        try:
+            cursor = conn.execute(
+                """INSERT INTO reviews
+                   (request_id, requester_id, worker_id, rating, comment, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (request_id, requester_id, request["worker_id"], rating,
+                 comment.strip(), utc_now())
+            )
+        except sqlite3.IntegrityError as exc:
+            raise MarketplaceError("تم تقييم هذا الطلب بالفعل") from exc
+        return int(cursor.lastrowid)
