@@ -79,13 +79,13 @@ The backend suite covers password/session behavior, role gates, request lifecycl
 
 ## Free hosting path (preview only)
 
-The repository includes a Render Blueprint at the root (`render.yaml`) that deploys the FastAPI service from `backend/` on the free web-service tier. It is configured for the `service-marketplace-v1` branch, the GitHub Pages origin, HTTPS proxy headers, and `SameSite=None` cookies. Render free instances sleep after 15 minutes of inactivity and have ephemeral local filesystems; therefore the blueprint requires a remote Turso database and does not use Render Postgres (the free Render Postgres plan expires after 30 days).
+The repository includes a Render Blueprint at the root (`render.yaml`) that deploys one FastAPI service from the repository root on the free web-service tier. FastAPI serves `index.html` at `/` and the API at `/v1/...` on the same origin. This avoids cross-site cookies and CORS for the preview. The service uses trusted proxy headers and `SameSite=Strict`. Render free instances sleep after 15 minutes of inactivity and have ephemeral local filesystems; therefore the blueprint requires a remote Turso database and does not use Render Postgres (the free Render Postgres plan expires after 30 days).
 
 Setup:
 1. Create a Turso free database and generate an auth token.
 2. Connect this repository to Render and deploy the Blueprint.
 3. Supply `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as secrets.
-4. Copy the resulting Render service URL into the preview UI's API URL field.
+4. Open the resulting Render service URL; the UI and API are same-origin, so leave the optional API URL field empty.
 5. Bootstrap the first administrator with `INWORK_ADMIN_BOOTSTRAP_TOKEN`, then remove the secret.
 6. Run the hosted integration checks, especially transaction rollback, atomic acceptance under concurrent requests, session persistence across restarts, and contact privacy.
 
