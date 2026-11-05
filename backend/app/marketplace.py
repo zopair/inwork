@@ -140,6 +140,9 @@ def connect(db_path: Optional[str] = None):
     layer, including explicit BEGIN IMMEDIATE transactions.
     """
     remote_url = os.environ.get("TURSO_DATABASE_URL", "").strip()
+    require_remote = os.environ.get("INWORK_REQUIRE_REMOTE_DB", "").strip().lower() in ("1", "true", "yes")
+    if require_remote and not remote_url:
+        raise RuntimeError("TURSO_DATABASE_URL is required when INWORK_REQUIRE_REMOTE_DB is enabled")
     if remote_url:
         token = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
         if not token:
