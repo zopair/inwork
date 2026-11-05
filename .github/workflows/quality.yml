@@ -54,3 +54,13 @@ jobs:
       - name: Run all backend tests
         working-directory: backend
         run: python -m unittest discover -v
+
+  container:
+    name: Portable Docker and Compose Build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build portable InWork image
+        run: docker build -f backend/Dockerfile -t inwork-ci .
+      - name: Validate Compose configuration
+        run: INWORK_ADMIN_BOOTSTRAP_TOKEN=ci-only-not-a-secret docker compose config --quiet
