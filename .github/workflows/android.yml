@@ -1,7 +1,7 @@
 name: InWork Android APK
 on:
   push:
-    branches: [main]
+    branches: [main, service-marketplace-v1]
   workflow_dispatch:
 jobs:
   validate:
