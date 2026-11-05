@@ -56,6 +56,13 @@ def initialize_auth_schema(db_path: Optional[str] = None) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_auth_attempts_lookup
             ON auth_login_attempts(email_key, ip_key, attempted_at);
+        CREATE TABLE IF NOT EXISTS auth_registration_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip_key TEXT NOT NULL,
+            attempted_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_auth_registration_ip
+            ON auth_registration_attempts(ip_key, attempted_at);
         """)
 
 def register_user(db_path: str, email: str, password: str, display_name: str,
