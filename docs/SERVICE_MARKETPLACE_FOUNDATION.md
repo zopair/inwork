@@ -54,10 +54,10 @@ The email address is currently an account identifier, not a verified identity. E
 - `PUT /v1/worker/profile`, `GET /v1/worker/requests`
 - `POST /v1/requests/{id}/accept`, `POST /v1/requests/{id}/status`
 - `POST /v1/requests/{id}/share-contact`, `GET /v1/requests/{id}/contact`
-- `POST /v1/worker/subscription`, `POST /v1/admin/subscriptions/{id}/verify`
+- `POST /v1/worker/subscription`, `GET /v1/admin/subscriptions/pending`, `POST /v1/admin/subscriptions/{id}/verify`
 - `POST /v1/admin/bootstrap`, `POST /v1/admin/categories`
 
-Worker discovery returns approximate coordinates (rounded to two decimal places), not exact stored coordinates. Phone/WhatsApp fields are private and are returned only to the parties on an accepted/in-progress/completed request after requester consent.
+Worker discovery is requester-authenticated and returns approximate coordinates (rounded to two decimal places) and distance rounded to whole kilometers, not exact stored coordinates. A worker must be within 25 km of a request to accept it. Phone/WhatsApp fields are private and are returned only to the parties on an accepted/in-progress/completed request after requester consent.
 
 ## Subscription operations
 
