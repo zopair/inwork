@@ -6,6 +6,19 @@ The active application is now the requester/worker service marketplace. The form
 
 ## Local backend
 
+### Docker Compose
+
+From the repository root:
+
+```bash
+cp .env.example .env
+# Set a unique INWORK_ADMIN_BOOTSTRAP_TOKEN in .env.
+docker compose up --build -d
+```
+
+The UI and API are served from the same origin at `http://localhost:8000`. SQLite persists in the named `inwork-data` volume at `/data/inwork.sqlite3`. For internet access, terminate TLS at a trusted reverse proxy and keep the volume mounted. The image is built with `docker build -f backend/Dockerfile -t inwork .` from the repository root.
+
+
 From `backend/`:
 
 ```bash
