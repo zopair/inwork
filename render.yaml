@@ -12,6 +12,8 @@ services:
     envVars:
       - key: INWORK_COOKIE_SAMESITE
         value: strict
+      - key: INWORK_REQUIRE_REMOTE_DB
+        value: true
       - key: TURSO_DATABASE_URL
         sync: false
       - key: TURSO_AUTH_TOKEN
