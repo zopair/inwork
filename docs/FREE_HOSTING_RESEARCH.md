@@ -82,3 +82,18 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 ## Pages preview failure and replacement
 
 The isolated GitHub Pages preview workflow was run and failed at `actions/configure-pages@v5` because the repository does not have a Pages site enabled/configured. Enabling Pages through that action requires a non-`GITHUB_TOKEN` credential with GitHub App `administration:write` and `pages:write` or an appropriate PAT. To avoid requesting elevated credentials or touching the existing Pages configuration, the failed preview workflow was removed. The preview now uses a single same-origin Render service that serves the HTML page and API together.
+
+## Official documentation checked
+
+- Render Free service limits and ephemeral storage: https://render.com/docs/free
+- Render billing behavior for free services: https://render.com/docs/faq (if a payment method is attached, overages can be billed; without one, Render disables affected services instead of charging).
+- Render Blueprint syntax and `checksPass`: https://render.com/docs/blueprint-spec
+- Render one-click Blueprint deployment: https://render.com/docs/deploy-to-render
+- Turso current Free plan and quotas: https://turso.tech/pricing
+- Turso Python quickstart and `turso_serverless` usage: https://github.com/tursodatabase/turso-docs/blob/main/sdk/python/quickstart.mdx
+- Turso serverless Python implementation (MIT, beta): https://github.com/tursodatabase/turso/tree/main/serverless/python
+- GitHub-hosted runner lifecycle: https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+- Oracle Always Free idle reclamation: https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm
+- Google Cloud Free Tier requirements and E2-micro limits: https://docs.cloud.google.com/free/docs/free-cloud-features
+
+Keep Render's payment method unset for a strict no-charge preview. Its free service is not suitable for production: the instance sleeps after inactivity, has no persistent local disk, and may be suspended when included usage is exhausted. Turso's free plan includes one day of point-in-time restore only; export backups independently before any real user data is accepted.
