@@ -10,7 +10,7 @@ InWork is not a job-listing website. It has two primary roles:
 ## Current implementation
 
 - Single-source Arabic RTL mobile-first web client in `index.html`, used by GitHub Pages and Android WebView.
-- FastAPI backend with SQLite persistence.
+- FastAPI backend with local SQLite for development and optional remote Turso (SQLite-compatible) persistence for stateless free hosting.
 - Password authentication, server-side revocable sessions, HttpOnly cookies, role-based authorization, login/signup throttling, and same-origin/allowlisted-origin write protection.
 - Dynamic admin-managed categories.
 - Worker profile and geospatial discovery using a bounded latitude/longitude search plus Haversine distance.
@@ -34,14 +34,28 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Open `index.html` through a local static server, enter the API URL, and register an account. Do not use the public GitHub Pages site as a production service until a persistent HTTPS API is configured.
 
+## Free preview deployment
+
+A Render Blueprint is provided in `render.yaml` for the `service-marketplace-v1` branch. It runs the FastAPI API on Render's free web-service tier and stores data in Turso rather than Render's ephemeral filesystem. Render's free service sleeps after inactivity, so the first request may take about a minute to wake. This is a preview/testing arrangement, not a production SLA.
+
+1. Create a free Turso database and obtain its database URL and auth token.
+2. Connect `zopair/inwork` to Render and deploy the Blueprint from `render.yaml`.
+3. Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` when Render prompts for the unsynchronized secrets.
+4. Keep `INWORK_ALLOWED_ORIGINS=https://zopair.github.io` and `INWORK_COOKIE_SAMESITE=none`; the blueprint sets these values.
+5. Copy the generated `onrender.com` service URL into the API URL field in the preview UI.
+6. Use `INWORK_ADMIN_BOOTSTRAP_TOKEN` once to create the first admin, then remove that secret from the service environment.
+
+Do not select Render Postgres for durable free storage: its free database expires after 30 days. Do not store SQLite files on a Render free web service; its filesystem is ephemeral.
+
 ## Required deployment configuration
 
-- `INWORK_DB_PATH`: persistent SQLite database path; back it up.
+- `INWORK_DB_PATH`: local persistent SQLite database path; back it up. Used only when `TURSO_DATABASE_URL` is not set.
+- `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`: optional remote Turso connection. When configured, the API uses the official `turso-serverless` DB-API driver and ignores `INWORK_DB_PATH`.
 - `INWORK_ALLOWED_ORIGINS`: exact comma-separated frontend origins. Never use wildcard origins with credentials.
 - `INWORK_COOKIE_SAMESITE=none`: only when frontend and API are cross-site; requires HTTPS. Prefer same-origin deployment because browsers may block third-party cookies.
 - `INWORK_ADMIN_BOOTSTRAP_TOKEN`: one-time random secret (24+ characters) for first administrator creation. Remove it from the environment after bootstrap.
 
-The API initializes the schema on startup. Keep local database files and secrets out of Git.
+The API initializes the schema on startup. Keep local database files and secrets out of Git. The remote Turso driver is beta; validate transaction and concurrency behavior on the hosted database before accepting real customer requests.
 
 ## Tests
 
