@@ -64,3 +64,5 @@ jobs:
         run: docker build -f backend/Dockerfile -t inwork-ci .
       - name: Validate Compose configuration
         run: INWORK_ADMIN_BOOTSTRAP_TOKEN=ci-only-not-a-secret docker compose config --quiet
+      - name: Parse Render Blueprint YAML
+        run: ruby -e 'require "yaml"; YAML.load_file("render.yaml")'
