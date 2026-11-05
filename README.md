@@ -1,5 +1,7 @@
 # InWork
 
+[![Deploy InWork preview to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/zopair/inwork/tree/service-marketplace-v1)
+
 **Arabic-first service marketplace connecting people who need a service with nearby independent workers and craftsmen.**
 
 InWork is not a job-listing website. It has two primary roles:
@@ -38,11 +40,11 @@ Open `index.html` through a local static server, enter the API URL, and register
 
 A Render Blueprint is provided in `render.yaml` for the `service-marketplace-v1` branch. It serves both the Arabic UI (`/`) and FastAPI routes from one Render web service, so browser sessions are same-origin and no API URL or cross-site cookie configuration is needed. Data is stored in Turso rather than Render's ephemeral filesystem. Render's free service sleeps after inactivity, so the first request may take about a minute to wake. This is a preview/testing arrangement, not a production SLA.
 
-1. Create a free Turso database and obtain its database URL and auth token.
-2. Connect `zopair/inwork` to Render and deploy the Blueprint from `render.yaml`.
+1. Create a free Turso database and obtain its database URL and auth token from [Turso](https://turso.tech/).
+2. Click the **Deploy InWork preview to Render** button above (or open [Render Blueprint deployment](https://render.com/deploy?repo=https://github.com/zopair/inwork/tree/service-marketplace-v1)), connect your GitHub account, and review the Blueprint.
 3. Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` when Render prompts for the unsynchronized secrets.
 4. Keep `INWORK_ALLOWED_ORIGINS=https://zopair.github.io` and `INWORK_COOKIE_SAMESITE=none`; the blueprint sets these values.
-5. Open the generated `onrender.com` service URL. The UI and API share the same origin; leave the optional API URL field empty.
+5. Open the generated `onrender.com` service URL (the Blueprint names the service `inwork-preview`; the actual hostname is shown by Render). The UI and API share the same origin; leave the optional API URL field empty.
 6. Use `INWORK_ADMIN_BOOTSTRAP_TOKEN` once to create the first admin, then remove that secret from the service environment.
 
 Do not select Render Postgres for durable free storage: its free database expires after 30 days. Do not store SQLite files on a Render free web service; its filesystem is ephemeral.
