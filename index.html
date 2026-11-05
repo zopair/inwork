@@ -60,3 +60,5 @@ boot();
 async function verifySubscription(id){try{await call('/v1/admin/subscriptions/'+id+'/verify',{method:'POST'});adminHome()}catch(e){alert(e.message)}}
 
 async function updateRequestStatus(id,status){try{await call('/v1/requests/'+id+'/status',{method:'POST',body:JSON.stringify({status:status})});myRequests()}catch(e){alert(e.message)}}
+
+async function submitReview(id){try{let rating=Number($('rating-'+id).value);let comment=$('review-'+id).value||'';await call('/v1/requests/'+id+'/review',{method:'POST',body:JSON.stringify({rating:rating,comment:comment})});alert('شكرًا لك، تم تسجيل تقييمك.');myRequests()}catch(e){alert(e.message)}}
