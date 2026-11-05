@@ -11,7 +11,7 @@ From `backend/`:
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 export INWORK_DB_PATH="$PWD/data/inwork.sqlite3"
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
