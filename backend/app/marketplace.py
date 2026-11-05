@@ -144,6 +144,8 @@ def connect(db_path: Optional[str] = None):
     if require_remote and not remote_url:
         raise RuntimeError("TURSO_DATABASE_URL is required when INWORK_REQUIRE_REMOTE_DB is enabled")
     if remote_url:
+        if not remote_url.startswith(("https://", "libsql://", "turso://")):
+            raise RuntimeError("TURSO_DATABASE_URL must use HTTPS, libsql://, or turso://")
         token = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
         if not token:
             raise RuntimeError("TURSO_AUTH_TOKEN is required with TURSO_DATABASE_URL")
