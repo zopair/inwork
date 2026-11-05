@@ -1,9 +1,15 @@
 from fastapi import FastAPI
+from .api import router as marketplace_router, initialize_api_database
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from .matching import rank_jobs
 
-app = FastAPI(title="InWork API", version="0.1.0")
+app = FastAPI(title="InWork API", version="0.2.0")
+app.include_router(marketplace_router)
+
+@app.on_event("startup")
+def startup():
+    initialize_api_database()
 
 class Profile(BaseModel):
     name: str = ""
