@@ -92,7 +92,7 @@ The backend suite covers password/session behavior, role gates, request lifecycl
 
 ## Free hosting path (preview only)
 
-The repository includes a Render Blueprint at the root (`render.yaml`) that deploys one FastAPI service from the repository root on the free web-service tier. FastAPI serves `index.html` at `/` and the API at `/v1/...` on the same origin. This avoids cross-site cookies and CORS for the preview. The service uses trusted proxy headers and `SameSite=Strict`. Render free instances sleep after 15 minutes of inactivity and have ephemeral local filesystems; therefore the blueprint requires a remote Turso database and does not use Render Postgres (the free Render Postgres plan expires after 30 days).
+The repository includes a Render Blueprint at the root (`render.yaml`) that deploys one FastAPI service from the repository root on the free web-service tier. FastAPI serves `index.html` at `/` and the API at `/v1/...` on the same origin. This avoids cross-site cookies and CORS for the preview. The service uses trusted HTTPS proxy headers and `SameSite=None; Secure`. The browser preview is same-origin. The Android WebView's fixed `https://inwork.local` origin is explicitly allowlisted and uses third-party cookie support; set the Render API URL in the Android app's optional API URL field. Render free instances sleep after 15 minutes of inactivity and have ephemeral local filesystems; therefore the blueprint requires a remote Turso database and does not use Render Postgres (the free Render Postgres plan expires after 30 days).
 
 Setup:
 1. Create a Turso free database and generate an auth token.
