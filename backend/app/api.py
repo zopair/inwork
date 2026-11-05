@@ -1,6 +1,7 @@
 """Authenticated InWork service marketplace API."""
 from __future__ import annotations
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Request, Response
@@ -8,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from .auth import (
     AuthenticationError, get_session_user, initialize_auth_schema, login,
-    register_user, revoke_session,
+    register_user, revoke_session, _password_hash,
 )
 from .marketplace import (
     MarketplaceError, accept_request, cancel_request, create_request,
@@ -104,6 +105,13 @@ class WorkerProfileInput(BaseModel):
 
 class StatusInput(BaseModel):
     status: str
+
+
+class BootstrapInput(BaseModel):
+    token: str = Field(min_length=24, max_length=256)
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=12, max_length=128)
+    display_name: str = Field(min_length=1, max_length=80)
 
 
 class CategoryInput(BaseModel):
@@ -255,6 +263,69 @@ def request_contact(request_id: int, user: dict = Depends(current_user)):
     if not contact:
         raise HTTPException(status_code=403, detail="بيانات الاتصال غير متاحة قبل قبول الطلب وموافقة صاحبه")
     return {"contact": contact}
+
+
+@router.post("/admin/bootstrap")
+def admin_bootstrap(data: BootstrapInput, _: None = Depends(require_same_origin)):
+    import hmac, secrets
+    from .marketplace import connect, utc_now
+    expected = os.environ.get("INWORK_ADMIN_BOOTSTRAP_TOKEN", "")
+    if len(expected) < 24 or not hmac.compare_digest(data.token, expected):
+        raise HTTPException(status_code=403, detail="رمز التهيئة غير صالح")
+    user_id, now = secrets.token_urlsafe(18), utc_now()
+    try:
+        with connect(DB_PATH) as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if conn.execute("SELECT 1 FROM users WHERE role='admin' LIMIT 1").fetchone():
+                raise HTTPException(status_code=409, detail="تم إنشاء مدير النظام بالفعل")
+            conn.execute("INSERT INTO users (id,role,display_name,created_at) VALUES (?,'admin',?,?)",
+                         (user_id, data.display_name.strip(), now))
+            conn.execute("INSERT INTO user_auth (user_id,email,password_hash,created_at) VALUES (?,?,?,?)",
+                         (user_id, data.email.strip().lower(), _password_hash(data.password), now))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="تعذر إنشاء حساب الإدارة") from exc
+    return {"ok": True, "message": "تم إنشاء حساب الإدارة الأول. سجّل الدخول الآن."}
+
+
+@router.post("/worker/subscription")
+def worker_subscription(user: dict = Depends(worker), _: None = Depends(require_same_origin)):
+    from .marketplace import connect, utc_now
+    with connect(DB_PATH) as conn:
+        active = conn.execute(
+            "SELECT 1 FROM subscriptions WHERE worker_id=? AND status='active' AND starts_at<=? AND ends_at>=? LIMIT 1",
+            (user["id"], utc_now(), utc_now())).fetchone()
+        if active:
+            raise HTTPException(status_code=409, detail="اشتراكك نشط بالفعل")
+        cursor = conn.execute(
+            "INSERT INTO subscriptions (worker_id,status,amount_egp,created_at) VALUES (?,'pending',100,?)",
+            (user["id"], utc_now()))
+        return {"subscription_id": cursor.lastrowid, "amount_egp": 100, "status": "pending"}
+
+
+@router.post("/admin/subscriptions/{subscription_id}/verify")
+def verify_subscription(subscription_id: int, user: dict = Depends(admin),
+                         _: None = Depends(require_same_origin)):
+    from .marketplace import connect, utc_now
+    now = utc_now()
+    end = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(timespec="seconds")
+    with connect(DB_PATH) as conn:
+        pending = conn.execute(
+            "SELECT worker_id FROM subscriptions WHERE id=? AND status='pending'",
+            (subscription_id,)).fetchone()
+        if not pending:
+            raise HTTPException(status_code=404, detail="طلب الاشتراك غير موجود أو تمت مراجعته")
+        conn.execute(
+            "UPDATE subscriptions SET status='expired' WHERE worker_id=? AND status='active'",
+            (pending["worker_id"],))
+        conn.execute(
+            "UPDATE subscriptions SET status='active',starts_at=?,ends_at=?,verified_by=?,verified_at=? WHERE id=?",
+            (now, end, user["id"], now, subscription_id))
+        conn.execute(
+            "INSERT INTO admin_audit (admin_id,action,target_type,target_id,created_at) VALUES (?,?,?,?,?)",
+            (user["id"], "verify_subscription", "subscription", str(subscription_id), now))
+    return {"subscription_id": subscription_id, "status": "active", "ends_at": end}
 
 
 @router.post("/admin/categories")
