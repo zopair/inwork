@@ -1,0 +1,23 @@
+# Free preview deployment for the InWork API.
+# The database is remote Turso; do not use SQLite on Render's ephemeral disk.
+services:
+  - type: web
+    name: inwork-api-preview
+    runtime: python
+    plan: free
+    branch: service-marketplace-v1
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
+    healthCheckPath: /health
+    envVars:
+      - key: INWORK_ALLOWED_ORIGINS
+        value: https://zopair.github.io
+      - key: INWORK_COOKIE_SAMESITE
+        value: none
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: INWORK_ADMIN_BOOTSTRAP_TOKEN
+        generateValue: true
