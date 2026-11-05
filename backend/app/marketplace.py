@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS worker_profiles (
     longitude REAL,
     is_available INTEGER NOT NULL DEFAULT 1 CHECK (is_available IN (0, 1)),
     whatsapp_private TEXT,
+    phone_private TEXT,
     updated_at TEXT NOT NULL,
     CHECK ((latitude IS NULL AND longitude IS NULL) OR
            (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180))
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS service_requests (
     created_at TEXT NOT NULL,
     accepted_at TEXT,
     completed_at TEXT,
+    contact_shared INTEGER NOT NULL DEFAULT 0 CHECK (contact_shared IN (0, 1)),
     CHECK (worker_id IS NULL OR worker_id <> requester_id)
 );
 
@@ -148,6 +150,13 @@ def connect(db_path: Optional[str] = None):
 def initialize_database(db_path: Optional[str] = None) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        # Safe additive migrations for databases created by earlier branch commits.
+        profile_columns = {row["name"] for row in conn.execute("PRAGMA table_info(worker_profiles)")}
+        if "phone_private" not in profile_columns:
+            conn.execute("ALTER TABLE worker_profiles ADD COLUMN phone_private TEXT")
+        request_columns = {row["name"] for row in conn.execute("PRAGMA table_info(service_requests)")}
+        if "contact_shared" not in request_columns:
+            conn.execute("ALTER TABLE service_requests ADD COLUMN contact_shared INTEGER NOT NULL DEFAULT 0")
 
 
 def create_request(
@@ -247,5 +256,175 @@ def transition_request(
             f"""UPDATE service_requests SET status = ?{timestamp_column}
                 WHERE id = ? AND worker_id = ? AND status = ?""",
             params,
+        )
+        return result.rowcount == 1
+
+
+def list_categories(db_path: str) -> list[dict]:
+    with connect(db_path) as conn:
+        return [dict(row) for row in conn.execute(
+            "SELECT id, name_ar FROM categories WHERE is_active=1 ORDER BY name_ar"
+        ).fetchall()]
+
+
+def search_workers(db_path: str, category_id: int, latitude: float,
+                   longitude: float, radius_km: float = 15) -> list[dict]:
+    import math
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        raise MarketplaceError("موقع البحث غير صالح")
+    if not (1 <= radius_km <= 100):
+        raise MarketplaceError("نطاق البحث يجب أن يكون بين 1 و100 كم")
+    lat_delta = radius_km / 110.574
+    lon_scale = max(0.01, 111.320 * math.cos(math.radians(latitude)))
+    lon_delta = radius_km / lon_scale
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """SELECT u.id, u.display_name, p.bio, p.specialties_json, p.latitude, p.longitude,
+                      c.name_ar AS category
+               FROM worker_profiles p JOIN users u ON u.id=p.user_id
+               JOIN categories c ON c.id=p.category_id
+               WHERE u.role='worker' AND u.is_active=1 AND p.is_available=1
+                 AND p.category_id=? AND p.latitude BETWEEN ? AND ?
+                 AND p.longitude BETWEEN ? AND ?
+                 AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.worker_id=u.id
+                    AND s.status='active' AND s.starts_at<=? AND s.ends_at>=?)""",
+            (category_id, latitude-lat_delta, latitude+lat_delta,
+             longitude-lon_delta, longitude+lon_delta, utc_now(), utc_now())
+        ).fetchall()
+    found = []
+    for row in rows:
+        lat1, lat2 = math.radians(latitude), math.radians(row["latitude"])
+        dlat = lat2-lat1
+        dlon = math.radians(row["longitude"]-longitude)
+        a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+        distance = 6371 * 2 * math.asin(math.sqrt(a))
+        if distance <= radius_km:
+            found.append({
+                "id": row["id"], "display_name": row["display_name"],
+                "bio": row["bio"], "specialties": row["specialties_json"],
+                "category": row["category"], "distance_km": round(distance, 1),
+                # Approximate map point only; never expose exact stored coordinates publicly.
+                "latitude": round(row["latitude"], 2),
+                "longitude": round(row["longitude"], 2),
+            })
+    return sorted(found, key=lambda item: item["distance_km"])
+
+
+def list_worker_requests(db_path: str, worker_id: str, radius_km: float = 25) -> list[dict]:
+    import math
+    with connect(db_path) as conn:
+        worker = conn.execute(
+            "SELECT category_id, latitude, longitude FROM worker_profiles WHERE user_id=?",
+            (worker_id,)
+        ).fetchone()
+        if not worker:
+            raise MarketplaceError("ملف مقدم الخدمة غير موجود")
+        rows = conn.execute(
+            """SELECT r.id, r.description, r.latitude, r.longitude, r.created_at,
+                      c.name_ar AS category, u.display_name AS requester_name
+               FROM service_requests r JOIN categories c ON c.id=r.category_id
+               JOIN users u ON u.id=r.requester_id
+               WHERE r.status='open' AND r.category_id=?
+               ORDER BY r.created_at DESC LIMIT 100""",
+            (worker["category_id"],)
+        ).fetchall()
+    results = []
+    for row in rows:
+        distance = None
+        if worker["latitude"] is not None and worker["longitude"] is not None:
+            p1, p2 = math.radians(worker["latitude"]), math.radians(row["latitude"])
+            dp = p2-p1
+            dl = math.radians(row["longitude"]-worker["longitude"])
+            a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+            distance = 6371 * 2 * math.asin(math.sqrt(a))
+            if distance > radius_km:
+                continue
+        results.append({
+            "id": row["id"], "description": row["description"],
+            "category": row["category"], "requester_name": row["requester_name"],
+            "distance_km": round(distance, 1) if distance is not None else None,
+            "latitude": round(row["latitude"], 2), "longitude": round(row["longitude"], 2),
+            "created_at": row["created_at"],
+        })
+    return results
+
+
+def list_user_requests(db_path: str, user_id: str, role: str) -> list[dict]:
+    if role == "requester":
+        predicate, params = "r.requester_id=?", (user_id,)
+    elif role == "worker":
+        predicate, params = "r.worker_id=?", (user_id,)
+    else:
+        raise MarketplaceError("الصلاحية غير كافية")
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            f"""SELECT r.id, r.description, r.status, r.created_at, r.accepted_at,
+                       r.completed_at, c.name_ar AS category,
+                       CASE WHEN r.requester_id=? THEN wu.display_name ELSE ru.display_name END AS other_party
+                FROM service_requests r JOIN categories c ON c.id=r.category_id
+                JOIN users ru ON ru.id=r.requester_id
+                LEFT JOIN users wu ON wu.id=r.worker_id
+                WHERE {predicate} ORDER BY r.created_at DESC""",
+            (user_id, *params)
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def update_worker_profile(db_path: str, worker_id: str, bio: str,
+                          latitude: float, longitude: float, available: bool,
+                          phone: Optional[str], whatsapp: Optional[str]) -> None:
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        raise MarketplaceError("الموقع غير صالح")
+    if len(bio) > 1000 or (phone and len(phone) > 32) or (whatsapp and len(whatsapp) > 32):
+        raise MarketplaceError("بعض البيانات أطول من المسموح")
+    with connect(db_path) as conn:
+        result = conn.execute(
+            """UPDATE worker_profiles SET bio=?, latitude=?, longitude=?, is_available=?,
+                      phone_private=?, whatsapp_private=?, updated_at=?
+               WHERE user_id=?""",
+            (bio.strip(), latitude, longitude, 1 if available else 0,
+             phone, whatsapp, utc_now(), worker_id)
+        )
+        if result.rowcount != 1:
+            raise MarketplaceError("ملف مقدم الخدمة غير موجود")
+
+
+def share_request_contact(db_path: str, requester_id: str, request_id: int) -> bool:
+    with connect(db_path) as conn:
+        result = conn.execute(
+            """UPDATE service_requests SET contact_shared=1
+               WHERE id=? AND requester_id=? AND status IN ('accepted','in_progress')""",
+            (request_id, requester_id)
+        )
+        return result.rowcount == 1
+
+
+def get_request_contact(db_path: str, user_id: str, role: str, request_id: int) -> Optional[dict]:
+    with connect(db_path) as conn:
+        row = conn.execute(
+            """SELECT r.requester_id, r.worker_id, r.status, r.contact_shared,
+                      p.phone_private, p.whatsapp_private
+               FROM service_requests r JOIN worker_profiles p ON p.user_id=r.worker_id
+               WHERE r.id=?""", (request_id,)
+        ).fetchone()
+        if not row or row["status"] not in ("accepted", "in_progress", "completed"):
+            return None
+        if role == "requester" and row["requester_id"] == user_id:
+            allowed = bool(row["contact_shared"])
+        elif role == "worker" and row["worker_id"] == user_id:
+            allowed = bool(row["contact_shared"])
+        else:
+            allowed = False
+        if not allowed:
+            return None
+        return {"phone": row["phone_private"], "whatsapp": row["whatsapp_private"]}
+
+
+def cancel_request(db_path: str, requester_id: str, request_id: int) -> bool:
+    with connect(db_path) as conn:
+        result = conn.execute(
+            """UPDATE service_requests SET status='cancelled'
+               WHERE id=? AND requester_id=? AND status='open'""",
+            (request_id, requester_id)
         )
         return result.rowcount == 1
