@@ -208,7 +208,20 @@ class MarketplaceApiIntegrationTests(unittest.TestCase):
                 f"/v1/requests/{request_id}/status", headers={"X-InWork-Request": "1"},
                 json={"status": "completed"},
             ).status_code, 200)
-            self.assertEqual(requester_client.get("/v1/requests/mine").json()["requests"][0]["status"], "completed")
+            history = requester_client.get("/v1/requests/mine").json()["requests"][0]
+            self.assertEqual(history["status"], "completed")
+            self.assertFalse(history["has_review"])
+            review = requester_client.post(
+                f"/v1/requests/{request_id}/review", headers={"X-InWork-Request": "1"},
+                json={"rating": 5, "comment": "خدمة ممتازة"},
+            )
+            self.assertEqual(review.status_code, 200, review.text)
+            duplicate_review = requester_client.post(
+                f"/v1/requests/{request_id}/review", headers={"X-InWork-Request": "1"},
+                json={"rating": 4, "comment": "محاولة تقييم ثانية"},
+            )
+            self.assertEqual(duplicate_review.status_code, 400)
+            self.assertTrue(requester_client.get("/v1/requests/mine").json()["requests"][0]["has_review"])
 
             # Logout revokes the opaque server-side session, not just the browser cookie.
             self.assertEqual(requester_client.post(
