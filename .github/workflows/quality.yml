@@ -57,7 +57,7 @@ jobs:
         run: pip install --disable-pip-version-check -r requirements.txt
       - name: Run backend smoke tests
         working-directory: backend
-        run: python -m unittest test_smoke.py -v
+        run: python -m unittest discover -v
 
   android-emulator:
     name: Android Emulator Smoke Test
