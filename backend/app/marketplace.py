@@ -319,6 +319,13 @@ def list_worker_requests(db_path: str, worker_id: str, radius_km: float = 25) ->
         ).fetchone()
         if not worker:
             raise MarketplaceError("ملف مقدم الخدمة غير موجود")
+        active_subscription = conn.execute(
+            """SELECT 1 FROM subscriptions WHERE worker_id=? AND status='active'
+               AND starts_at<=? AND ends_at>=? LIMIT 1""",
+            (worker_id, utc_now(), utc_now())
+        ).fetchone()
+        if not active_subscription:
+            raise MarketplaceError("يلزم تفعيل الاشتراك لعرض الطلبات")
         rows = conn.execute(
             """SELECT r.id, r.description, r.latitude, r.longitude, r.created_at,
                       c.name_ar AS category, u.display_name AS requester_name
