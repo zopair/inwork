@@ -8,7 +8,7 @@ from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Re
 from pydantic import BaseModel, Field
 
 from .auth import (
-    AuthenticationError, get_session_user, initialize_auth_schema, login,
+    AuthenticationError, allow_registration, get_session_user, initialize_auth_schema, login,
     register_user, revoke_session, _password_hash,
 )
 from .marketplace import (
@@ -123,6 +123,9 @@ class CategoryInput(BaseModel):
 @router.post("/auth/register")
 def auth_register(data: RegisterInput, request: Request, response: Response,
                   _: None = Depends(require_same_origin)):
+    client_ip = request.client.host if request.client else "unknown"
+    if not allow_registration(DB_PATH, client_ip):
+        raise HTTPException(status_code=429, detail="تم تجاوز عدد محاولات التسجيل. حاول بعد ساعة")
     try:
         user = register_user(DB_PATH, data.email, data.password, data.display_name,
                              data.role, data.category_id)
