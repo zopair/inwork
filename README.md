@@ -29,7 +29,7 @@ InWork is not a job-listing website. It has two primary roles:
 
 ```bash
 cp .env.example .env
-# Replace INWORK_ADMIN_BOOTSTRAP_TOKEN in .env with a unique random secret.
+# Generate a token with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and set it in `.env` before starting.
 docker compose up --build -d
 ```
 
