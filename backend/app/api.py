@@ -303,6 +303,11 @@ def worker_subscription(user: dict = Depends(worker), _: None = Depends(require_
             (user["id"], utc_now(), utc_now())).fetchone()
         if active:
             raise HTTPException(status_code=409, detail="اشتراكك نشط بالفعل")
+        pending = conn.execute(
+            "SELECT id FROM subscriptions WHERE worker_id=? AND status='pending' LIMIT 1",
+            (user["id"],)).fetchone()
+        if pending:
+            raise HTTPException(status_code=409, detail="لديك طلب اشتراك قيد المراجعة بالفعل")
         cursor = conn.execute(
             "INSERT INTO subscriptions (worker_id,status,amount_egp,created_at) VALUES (?,'pending',100,?)",
             (user["id"], utc_now()))
@@ -316,6 +321,7 @@ def verify_subscription(subscription_id: int, user: dict = Depends(admin),
     now = utc_now()
     end = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(timespec="seconds")
     with connect(DB_PATH) as conn:
+        conn.execute("BEGIN IMMEDIATE")
         pending = conn.execute(
             "SELECT worker_id FROM subscriptions WHERE id=? AND status='pending'",
             (subscription_id,)).fetchone()
