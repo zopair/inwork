@@ -8,6 +8,12 @@ from __future__ import annotations
 
 import os
 import sqlite3
+
+try:
+    import turso_serverless
+    _INTEGRITY_ERRORS = (sqlite3.IntegrityError, turso_serverless.IntegrityError)
+except ImportError:
+    _INTEGRITY_ERRORS = (sqlite3.IntegrityError,)
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -127,14 +133,36 @@ def utc_now() -> str:
 
 @contextmanager
 def connect(db_path: Optional[str] = None):
-    """Yield a foreign-key-enforcing connection and always close it."""
-    path = db_path or os.environ.get("INWORK_DB_PATH") or str(DEFAULT_DB)
-    if path != ":memory:":
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, timeout=10, isolation_level=None)
-    conn.row_factory = sqlite3.Row
+    """Yield a local SQLite or remote Turso connection.
+
+    Remote Turso is selected only when TURSO_DATABASE_URL is configured.
+    The HTTP driver preserves the SQLite DB-API shape used by this domain
+    layer, including explicit BEGIN IMMEDIATE transactions.
+    """
+    remote_url = os.environ.get("TURSO_DATABASE_URL", "").strip()
+    if remote_url:
+        token = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
+        if not token:
+            raise RuntimeError("TURSO_AUTH_TOKEN is required with TURSO_DATABASE_URL")
+        try:
+            import turso_serverless
+        except ImportError as exc:
+            raise RuntimeError("Install the turso-serverless dependency for remote database mode") from exc
+        conn = turso_serverless.connect(
+            remote_url,
+            auth_token=token,
+            isolation_level=None,
+        )
+        conn.row_factory = sqlite3.Row
+    else:
+        path = db_path or os.environ.get("INWORK_DB_PATH") or str(DEFAULT_DB)
+        if path != ":memory:":
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(path, timeout=10, isolation_level=None)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 10000")
+
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA busy_timeout = 10000")
     try:
         yield conn
         if conn.in_transaction:
@@ -481,6 +509,6 @@ def create_review(db_path: str, requester_id: str, request_id: int,
                 (request_id, requester_id, request["worker_id"], rating,
                  comment.strip(), utc_now())
             )
-        except sqlite3.IntegrityError as exc:
+        except _INTEGRITY_ERRORS as exc:
             raise MarketplaceError("تم تقييم هذا الطلب بالفعل") from exc
         return int(cursor.lastrowid)
