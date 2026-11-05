@@ -39,7 +39,9 @@ def require_same_origin(request: Request, x_inwork_request: Optional[str] = Head
     if origin:
         from urllib.parse import urlparse
         parsed = urlparse(origin)
-        if parsed.netloc != request.url.netloc or parsed.scheme != request.url.scheme:
+        allowed = {item.strip().rstrip("/") for item in os.environ.get("INWORK_ALLOWED_ORIGINS", "").split(",") if item.strip()}
+        same_origin = parsed.netloc == request.url.netloc and parsed.scheme == request.url.scheme
+        if not same_origin and origin.rstrip("/") not in allowed:
             raise HTTPException(status_code=403, detail="مصدر الطلب غير مسموح")
 
 
@@ -130,7 +132,7 @@ def auth_register(data: RegisterInput, request: Request, response: Response,
         _raise_domain(exc)
     response.set_cookie(
         "inwork_session", token, httponly=True, secure=request.url.scheme == "https",
-        samesite="strict", max_age=7 * 24 * 60 * 60, path="/"
+        samesite=os.environ.get("INWORK_COOKIE_SAMESITE", "strict").lower(), max_age=7 * 24 * 60 * 60, path="/"
     )
     return {"user": session_user}
 
