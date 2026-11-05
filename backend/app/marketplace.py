@@ -201,7 +201,7 @@ def accept_request(db_path: str, worker_id: str, request_id: int) -> bool:
     with connect(db_path) as conn:
         conn.execute("BEGIN IMMEDIATE")
         worker = conn.execute(
-            """SELECT u.role, u.is_active, p.category_id, p.is_available
+            """SELECT u.role, u.is_active, p.category_id, p.is_available, p.latitude, p.longitude
                FROM users u JOIN worker_profiles p ON p.user_id = u.id
                WHERE u.id = ?""",
             (worker_id,),
@@ -221,6 +221,24 @@ def accept_request(db_path: str, worker_id: str, request_id: int) -> bool:
         ).fetchone()
         if not subscription:
             raise MarketplaceError("اشتراك مقدم الخدمة غير نشط")
+        if worker["latitude"] is None or worker["longitude"] is None:
+            raise MarketplaceError("حدّد موقعك قبل قبول الطلب")
+        target = conn.execute(
+            """SELECT latitude, longitude FROM service_requests
+               WHERE id=? AND status='open' AND worker_id IS NULL
+                 AND category_id=? AND requester_id<>?""",
+            (request_id, worker["category_id"], worker_id)
+        ).fetchone()
+        if not target:
+            return False
+        import math
+        lat1, lat2 = math.radians(worker["latitude"]), math.radians(target["latitude"])
+        dlat = lat2-lat1
+        dlon = math.radians(target["longitude"]-worker["longitude"])
+        a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+        distance_km = 6371 * 2 * math.asin(math.sqrt(a))
+        if distance_km > 25:
+            return False
 
         result = conn.execute(
             """UPDATE service_requests
@@ -302,7 +320,7 @@ def search_workers(db_path: str, category_id: int, latitude: float,
             found.append({
                 "id": row["id"], "display_name": row["display_name"],
                 "bio": row["bio"], "specialties": row["specialties_json"],
-                "category": row["category"], "distance_km": round(distance, 1),
+                "category": row["category"], "distance_km": round(distance),
                 # Approximate map point only; never expose exact stored coordinates publicly.
                 "latitude": round(row["latitude"], 2),
                 "longitude": round(row["longitude"], 2),
@@ -319,6 +337,8 @@ def list_worker_requests(db_path: str, worker_id: str, radius_km: float = 25) ->
         ).fetchone()
         if not worker:
             raise MarketplaceError("ملف مقدم الخدمة غير موجود")
+        if worker["latitude"] is None or worker["longitude"] is None:
+            raise MarketplaceError("حدّد موقعك لعرض الطلبات القريبة")
         active_subscription = conn.execute(
             """SELECT 1 FROM subscriptions WHERE worker_id=? AND status='active'
                AND starts_at<=? AND ends_at>=? LIMIT 1""",
@@ -349,7 +369,7 @@ def list_worker_requests(db_path: str, worker_id: str, radius_km: float = 25) ->
         results.append({
             "id": row["id"], "description": row["description"],
             "category": row["category"], "requester_name": row["requester_name"],
-            "distance_km": round(distance, 1) if distance is not None else None,
+            "distance_km": round(distance) if distance is not None else None,
             "latitude": round(row["latitude"], 2), "longitude": round(row["longitude"], 2),
             "created_at": row["created_at"],
         })
