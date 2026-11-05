@@ -118,6 +118,12 @@ class MarketplaceDomainTests(unittest.TestCase):
         with self.assertRaises(MarketplaceError):
             accept_request(self.db_path, "worker-1", request_id)
 
+    def test_worker_cannot_accept_request_outside_service_radius(self):
+        request_id = create_request(
+            self.db_path, "requester-1", 1, "خدمة في محافظة بعيدة", 31.2, 32.2
+        )
+        self.assertFalse(accept_request(self.db_path, "worker-1", request_id))
+
     def test_only_assigned_worker_can_advance_lifecycle(self):
         request_id = self.make_request()
         self.assertTrue(accept_request(self.db_path, "worker-1", request_id))
