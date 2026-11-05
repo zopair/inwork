@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -53,6 +54,42 @@ class MarketplaceApiIntegrationTests(unittest.TestCase):
             }).status_code,
             403,
         )
+
+    def test_admin_bootstrap_is_one_time_and_admin_controls_categories(self):
+        token = "one-time-bootstrap-secret-value-123456"
+        with patch.dict("os.environ", {"INWORK_ADMIN_BOOTSTRAP_TOKEN": token}):
+            response = self.client.post(
+                "/v1/admin/bootstrap", headers={"X-InWork-Request": "1"},
+                json={"token": token, "email": "admin@example.test",
+                      "password": "Admin-Strong-Password-2026!", "display_name": "مدير"})
+            self.assertEqual(response.status_code, 200, response.text)
+            second = self.client.post(
+                "/v1/admin/bootstrap", headers={"X-InWork-Request": "1"},
+                json={"token": token, "email": "other-admin@example.test",
+                      "password": "Admin-Strong-Password-2026!", "display_name": "مدير آخر"})
+            self.assertEqual(second.status_code, 409)
+        login = self.client.post(
+            "/v1/auth/login", headers={"X-InWork-Request": "1"},
+            json={"email": "admin@example.test", "password": "Admin-Strong-Password-2026!"})
+        self.assertEqual(login.status_code, 200, login.text)
+        category = self.client.post(
+            "/v1/admin/categories", headers={"X-InWork-Request": "1"},
+            json={"name_ar": "سباك"})
+        self.assertEqual(category.status_code, 200, category.text)
+        self.assertEqual(category.json()["name_ar"], "سباك")
+
+    def test_login_failures_are_rate_limited(self):
+        self.register("lockout@example.test", "requester")
+        for _ in range(5):
+            response = self.client.post(
+                "/v1/auth/login", headers={"X-InWork-Request": "1"},
+                json={"email": "lockout@example.test", "password": "wrong-password"})
+            self.assertEqual(response.status_code, 400)
+        blocked = self.client.post(
+            "/v1/auth/login", headers={"X-InWork-Request": "1"},
+            json={"email": "lockout@example.test", "password": "Correct-Horse-Battery-12!"})
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn("15 دقيقة", blocked.json()["detail"])
 
     def test_requester_worker_flow_and_contact_privacy(self):
         requester_client = TestClient(app)
