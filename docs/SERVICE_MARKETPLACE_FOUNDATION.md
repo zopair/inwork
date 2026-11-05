@@ -86,7 +86,13 @@ Setup:
 2. Connect this repository to Render and deploy the Blueprint.
 3. Supply `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as secrets.
 4. Open the resulting Render service URL; the UI and API are same-origin, so leave the optional API URL field empty.
-5. Bootstrap the first administrator with `INWORK_ADMIN_BOOTSTRAP_TOKEN`, then remove the secret.
+5. Bootstrap the first administrator with `INWORK_ADMIN_BOOTSTRAP_TOKEN`, then remove the secret. The bootstrap route can be called once from a trusted terminal:
+   ```bash
+curl -X POST "$INWORK_URL/v1/admin/bootstrap" \\
+  -H 'Content-Type: application/json' \\
+  -H 'X-InWork-Request: 1' \\
+  -d '{"token":"YOUR_BOOTSTRAP_TOKEN","email":"admin@example.com","password":"USE_A_UNIQUE_12+_CHAR_PASSWORD","display_name":"InWork Admin"}'
+```
 6. Run the hosted integration checks, especially transaction rollback, atomic acceptance under concurrent requests, session persistence across restarts, and contact privacy.
 
 The Turso serverless Python driver is a beta project. Local CI can verify adapter selection but cannot prove hosted transaction behavior without a real database and credentials. Treat this deployment as a test preview, not production infrastructure.
