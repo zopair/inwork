@@ -387,6 +387,7 @@ def list_user_requests(db_path: str, user_id: str, role: str) -> list[dict]:
         rows = conn.execute(
             f"""SELECT r.id, r.description, r.status, r.created_at, r.accepted_at,
                        r.completed_at, c.name_ar AS category,
+                       EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id) AS has_review,
                        CASE WHEN r.requester_id=? THEN wu.display_name ELSE ru.display_name END AS other_party
                 FROM service_requests r JOIN categories c ON c.id=r.category_id
                 JOIN users ru ON ru.id=r.requester_id
