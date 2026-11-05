@@ -4,7 +4,7 @@ Research date: 2026-11-05
 
 ## Executive decision
 
-Do not rewrite InWork around a new backend product yet. Keep the existing FastAPI domain/API and SQLite-compatible SQL. Add a selectable database adapter so local development stays on SQLite while a stateless preview can use Turso's remote SQL-over-HTTP driver. The first no-card preview candidate is Render Free + Turso Free; it is a temporary public test environment, not a production SLA. For a durable self-hosted route, package the API for Docker and deploy it with an open-source PaaS on a machine/VM the owner controls.
+Do not rewrite InWork around a new backend product yet. Keep the existing FastAPI domain/API and SQLite-compatible SQL. Add a selectable database adapter so local development stays on SQLite while a stateless preview can use Turso's remote SQL-over-HTTP driver. The first no-card preview candidate is a single same-origin FastAPI service on Render Free + Turso Free; it is a temporary public test environment, not a production SLA. For a durable self-hosted route, package the API for Docker and deploy it with an open-source PaaS on a machine/VM the owner controls.
 
 ## GitHub repositories reviewed
 
@@ -36,7 +36,7 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 1. GitHub Pages is static hosting; it cannot run the FastAPI process.
 2. The current API uses local SQLite. Render Free loses local files on restart, redeploy, or idle spin-down.
 3. Render's free Postgres is not a durable answer because the free database expires after 30 days.
-4. Browser sessions require secure cross-site cookies when GitHub Pages and the API are on different sites. Correct forwarded HTTPS scheme, exact CORS origin, and `SameSite=None; Secure` are mandatory.
+4. Cross-origin cookies would be fragile between a static frontend and a separate API. The preview now avoids that by serving the frontend and API from the same FastAPI origin, with `SameSite=Strict` and trusted HTTPS proxy headers.
 5. The current backend uses SQLite-specific connection setup, row factories, schema scripts, and explicit `BEGIN IMMEDIATE`; any remote adapter must preserve those semantics.
 6. The free Render service may cold-start and has no production SLA. It is acceptable for a test preview, not a launch guarantee.
 7. The admin bootstrap token and Turso URL/token must be supplied as secrets; the assistant cannot create third-party accounts or invent credentials.
@@ -50,12 +50,12 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 - [x] Keep local SQLite as the default development mode.
 - [x] Add an optional remote Turso DB-API connection path.
 - [x] Add a unit test for selecting the remote adapter and requiring its auth token.
-- [x] Add a Render Blueprint for a no-card preview API deployment, backed by remote Turso rather than ephemeral local files.
+- [x] Add a Render Blueprint for a same-origin UI + API preview, backed by remote Turso rather than ephemeral local files.
 - [x] Document the provider limits and fallback options.
 - [ ] Run CI on the newest branch head and fix any regressions.
 - [ ] Create the Turso database and place its URL/token into Render's secret fields.
 - [ ] Connect the repository to Render and deploy the Blueprint.
-- [ ] Set the deployed API URL in the GitHub Pages preview UI.
+- [ ] Open the Render service URL; same-origin API routing requires no extra frontend configuration.
 - [ ] Verify `/health`, registration, login, logout, session persistence, worker profile, geospatial search, request lifecycle, and consent-gated contact.
 - [ ] Run a two-worker acceptance race against the hosted database and verify exactly one winner.
 - [ ] Verify data survives service sleep/restart and redeployment.
@@ -64,7 +64,7 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 
 ## Fallback ladder
 
-1. Render Free + Turso Free for a quick no-card public preview.
+1. Render Free + Turso Free for a quick no-card same-origin public preview.
 2. If Render rejects the service or imposes unsuitable limits, run the same Dockerized API on a user-controlled Linux host using Dokku or Coolify; the app and DB remain portable.
 3. If a free VM is acceptable and card verification is acceptable, test Oracle Always Free, but monitor reclaim conditions and maintain off-host backups.
 4. If no public compute account is available, run the API locally on an always-on owner-controlled computer and use a secure tunnel only for temporary testing; never expose an unauthenticated database or leave an admin bootstrap secret active.
@@ -76,3 +76,7 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 - Do not claim production readiness from a green CI run alone.
 - Do not keep free compute alive by artificial cron traffic or abuse provider quotas.
 - Before real users, add backups, restore drills, rate-limit monitoring, identity/account recovery, and a documented incident path.
+
+## Pages preview failure and replacement
+
+The isolated GitHub Pages preview workflow was run and failed at `actions/configure-pages@v5` because the repository does not have a Pages site enabled/configured. Enabling Pages through that action requires a non-`GITHUB_TOKEN` credential with GitHub App `administration:write` and `pages:write` or an appropriate PAT. To avoid requesting elevated credentials or touching the existing Pages configuration, the failed preview workflow was removed. The preview now uses a single same-origin Render service that serves the HTML page and API together.
