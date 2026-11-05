@@ -315,6 +315,20 @@ def worker_subscription(user: dict = Depends(worker), _: None = Depends(require_
         return {"subscription_id": cursor.lastrowid, "amount_egp": 100, "status": "pending"}
 
 
+@router.get("/admin/subscriptions/pending")
+def pending_subscriptions(user: dict = Depends(admin)):
+    from .marketplace import connect
+    with connect(DB_PATH) as conn:
+        rows = conn.execute(
+            """SELECT s.id, s.worker_id, u.display_name AS worker_name,
+                      a.email AS worker_email, s.amount_egp, s.created_at
+               FROM subscriptions s JOIN users u ON u.id=s.worker_id
+               LEFT JOIN user_auth a ON a.user_id=u.id
+               WHERE s.status='pending' ORDER BY s.created_at ASC"""
+        ).fetchall()
+        return {"subscriptions": [dict(row) for row in rows]}
+
+
 @router.post("/admin/subscriptions/{subscription_id}/verify")
 def verify_subscription(subscription_id: int, user: dict = Depends(admin),
                          _: None = Depends(require_same_origin)):
