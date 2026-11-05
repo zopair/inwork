@@ -6,6 +6,8 @@ services:
     runtime: python
     plan: free
     branch: service-marketplace-v1
+    region: frankfurt
+    autoDeployTrigger: checksPass
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
     healthCheckPath: /health
