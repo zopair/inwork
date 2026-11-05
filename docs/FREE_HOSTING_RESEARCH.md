@@ -51,6 +51,8 @@ Do not rewrite InWork around a new backend product yet. Keep the existing FastAP
 - [x] Add an optional remote Turso DB-API connection path.
 - [x] Add a unit test for selecting the remote adapter and requiring its auth token.
 - [x] Add a Render Blueprint for a same-origin UI + API preview, backed by remote Turso rather than ephemeral local files.
+- [x] Add a portable Dockerfile and persistent Docker Compose volume for self-hosted Coolify/Dokku/CapRover deployment.
+- [x] Add Docker image and Compose validation to CI.
 - [x] Document the provider limits and fallback options.
 - [ ] Run CI on the newest branch head and fix any regressions.
 - [ ] Create the Turso database and place its URL/token into Render's secret fields.
