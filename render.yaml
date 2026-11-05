@@ -1,20 +1,17 @@
-# Free preview deployment for the InWork API.
-# The database is remote Turso; do not use SQLite on Render's ephemeral disk.
+# The FastAPI process serves both the Arabic web UI and API on one origin.
+# The database is remote Turso; never store persistent SQLite data on Render Free.
 services:
   - type: web
-    name: inwork-api-preview
+    name: inwork-preview
     runtime: python
     plan: free
     branch: service-marketplace-v1
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
     healthCheckPath: /health
     envVars:
-      - key: INWORK_ALLOWED_ORIGINS
-        value: https://zopair.github.io
       - key: INWORK_COOKIE_SAMESITE
-        value: none
+        value: strict
       - key: TURSO_DATABASE_URL
         sync: false
       - key: TURSO_AUTH_TOKEN
