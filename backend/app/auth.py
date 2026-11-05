@@ -139,3 +139,26 @@ def revoke_session(db_path: str, token: str) -> bool:
         result = conn.execute("UPDATE auth_sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL",
                               (utc_now(), _session_digest(token)))
         return result.rowcount == 1
+
+
+def allow_registration(db_path: str, ip_address: str) -> bool:
+    ip_key = (ip_address or "unknown")[:64]
+    now = utc_now()
+    cutoff = _utc_after(minutes=-60)
+    with connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        count = conn.execute(
+            "SELECT COUNT(*) AS n FROM auth_registration_attempts WHERE ip_key=? AND attempted_at>=?",
+            (ip_key, cutoff)
+        ).fetchone()["n"]
+        if count >= 5:
+            return False
+        conn.execute(
+            "INSERT INTO auth_registration_attempts (ip_key,attempted_at) VALUES (?,?)",
+            (ip_key, now)
+        )
+        conn.execute(
+            "DELETE FROM auth_registration_attempts WHERE attempted_at<?",
+            (_utc_after(minutes=-1440),)
+        )
+        return True
