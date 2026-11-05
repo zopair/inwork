@@ -1,4 +1,7 @@
 import os
+from pathlib import Path
+
+from fastapi.responses import FileResponse
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,3 +36,11 @@ def startup():
 @app.get("/health")
 def health():
     return {"ok": True, "service": "inwork-api", "version": "0.2.0"}
+
+
+FRONTEND_FILE = Path(__file__).resolve().parents[2] / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+def frontend():
+    return FileResponse(FRONTEND_FILE)
