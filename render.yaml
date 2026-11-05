@@ -1,0 +1,26 @@
+# The FastAPI process serves both the Arabic web UI and API on one origin.
+# The database is remote Turso; never store persistent SQLite data on Render Free.
+services:
+  - type: web
+    name: inwork-preview
+    runtime: python
+    plan: free
+    branch: service-marketplace-v1
+    region: frankfurt
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
+    healthCheckPath: /health
+    envVars:
+      - key: INWORK_COOKIE_SAMESITE
+        value: none
+      - key: INWORK_ALLOWED_ORIGINS
+        value: https://inwork.local
+      - key: INWORK_REQUIRE_REMOTE_DB
+        value: "true"
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: INWORK_ADMIN_BOOTSTRAP_TOKEN
+        generateValue: true

@@ -1,0 +1,11 @@
+# Local Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# InWork local database and secrets
+backend/data/
+.env
+.env.*
+!.env.example

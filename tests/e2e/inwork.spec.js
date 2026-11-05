@@ -4,21 +4,24 @@ async function boot(page) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/index.html');
-  await page.waitForTimeout(250);
-  if (errors.length) throw new Error(`InWork browser runtime error: ${errors.join(' | ')}`);
+  await expect(page.locator('#view')).toBeVisible();
+  if (errors.length) throw new Error('InWork browser runtime error: ' + errors.join(' | '));
 }
 
-test('InWork boots and shows the Arabic onboarding screen', async ({ page }) => {
+test('InWork opens the Arabic service marketplace with no mock listings', async ({ page }) => {
   await boot(page);
   await expect(page).toHaveTitle(/InWork/);
-  await expect(page.locator('#app')).not.toBeEmpty();
-  await expect(page.getByText('InWork', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: /خدمة محتاجها/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'أحتاج خدمة' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'أقدم خدمة' })).toBeVisible();
+  await expect(page.locator('#apiBase')).toBeVisible();
 });
 
-test('InWork onboarding can enter the main experience', async ({ page }) => {
+test('requester entry opens real account registration fields', async ({ page }) => {
   await boot(page);
-  const buttons = page.locator('button');
-  await expect(buttons.first()).toBeVisible();
-  await buttons.first().click();
-  await expect(page.locator('#app')).not.toBeEmpty();
+  await page.getByRole('button', { name: 'أحتاج خدمة' }).click();
+  await expect(page.locator('#email')).toBeVisible();
+  await expect(page.locator('#displayName')).toBeVisible();
+  await expect(page.locator('#password')).toBeVisible();
+  await expect(page.locator('#role')).toHaveValue('requester');
 });

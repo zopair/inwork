@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
+import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -39,9 +40,10 @@ public class MainActivity extends Activity {
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
     s.setDomStorageEnabled(true);
-    s.setDatabaseEnabled(true);
-    s.setAllowFileAccess(true);
-    s.setAllowContentAccess(true);
+    s.setDatabaseEnabled(false);
+    s.setAllowFileAccess(false);
+    s.setAllowContentAccess(false);
+    CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
     s.setGeolocationEnabled(true);
     s.setBuiltInZoomControls(false);
     s.setDisplayZoomControls(false);
@@ -58,7 +60,7 @@ public class MainActivity extends Activity {
       }
       @Override public void onPageFinished(WebView view, String url) {
         super.onPageFinished(view, url);
-        view.evaluateJavascript("(function(){var a=document.getElementById('app');return JSON.stringify({ready:!!a,children:a?a.children.length:0,title:document.title});})()", value -> {
+        view.evaluateJavascript("(function(){var a=document.getElementById('view')||document.querySelector('.app');return JSON.stringify({ready:!!a,children:a?a.children.length:0,title:document.title});})()", value -> {
           Log.i("InWork", "INWORK_READY " + value);
         });
       }

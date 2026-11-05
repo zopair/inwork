@@ -1,22 +1,20 @@
 import unittest
 
-from app.main import JOBS, Profile, health, jobs, match
+from app.main import frontend, health
+from pathlib import Path
 
 
 class InWorkApiSmokeTest(unittest.TestCase):
+    def test_frontend_entrypoint(self):
+        response = frontend()
+        self.assertTrue(Path(response.path).is_file())
+        self.assertIn("InWork", Path(response.path).read_text(encoding="utf-8"))
+
     def test_health(self):
-        self.assertEqual(health(), {"ok": True, "service": "inwork-api"})
-
-    def test_jobs_catalog(self):
-        payload = jobs()
-        self.assertGreaterEqual(len(payload["jobs"]), 5)
-        self.assertTrue(all(item["id"] for item in payload["jobs"]))
-
-    def test_matching_prefers_relevant_job(self):
-        profile = Profile(skills=["Excel", "كتابة"], languages=["عربي"], work_modes=["من البيت"])
-        payload = match(profile)
-        self.assertTrue(payload["results"])
-        self.assertIn("إدخال بيانات", payload["results"][0]["title"])
+        self.assertEqual(
+            health(),
+            {"ok": True, "service": "inwork-api", "version": "0.2.0"},
+        )
 
 
 if __name__ == "__main__":
