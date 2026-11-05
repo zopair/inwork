@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     worker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'expired', 'rejected')),
+    amount_egp INTEGER NOT NULL DEFAULT 100 CHECK (amount_egp > 0),
     starts_at TEXT,
     ends_at TEXT,
     verified_by TEXT REFERENCES users(id),
@@ -121,8 +123,9 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def connect(db_path: Optional[str] = None) -> sqlite3.Connection:
-    """Open a foreign-key-enforcing SQLite connection."""
+@contextmanager
+def connect(db_path: Optional[str] = None):
+    """Yield a foreign-key-enforcing connection and always close it."""
     path = db_path or os.environ.get("INWORK_DB_PATH") or str(DEFAULT_DB)
     if path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +133,16 @@ def connect(db_path: Optional[str] = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA busy_timeout = 10000")
-    return conn
+    try:
+        yield conn
+        if conn.in_transaction:
+            conn.commit()
+    except Exception:
+        if conn.in_transaction:
+            conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def initialize_database(db_path: Optional[str] = None) -> None:
