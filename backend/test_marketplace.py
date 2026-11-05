@@ -106,9 +106,11 @@ class MarketplaceDomainTests(unittest.TestCase):
     def test_wrong_category_and_inactive_subscription_cannot_accept(self):
         request_id = self.make_request()
         with connect(self.db_path) as conn:
-            conn.execute("UPDATE worker_profiles SET category_id = 99 WHERE user_id = 'worker-1'")
-        with self.assertRaises(Exception):
-            accept_request(self.db_path, "worker-1", request_id)
+            conn.execute(
+                "INSERT INTO categories (id, name_ar, created_at) VALUES (2, 'سباك', '2026-01-01T00:00:00+00:00')"
+            )
+            conn.execute("UPDATE worker_profiles SET category_id = 2 WHERE user_id = 'worker-1'")
+        self.assertFalse(accept_request(self.db_path, "worker-1", request_id))
 
         with connect(self.db_path) as conn:
             conn.execute("UPDATE worker_profiles SET category_id = 1 WHERE user_id = 'worker-1'")
