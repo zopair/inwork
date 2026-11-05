@@ -9,7 +9,7 @@ InWork is not a job-listing website. It has two primary roles:
 
 ## Current implementation
 
-- Single-source Arabic RTL mobile-first web client in `index.html`, used by GitHub Pages and Android WebView.
+- Single-source Arabic RTL mobile-first web client in `index.html`, served directly by FastAPI for same-origin preview and packaged by Android WebView.
 - FastAPI backend with local SQLite for development and optional remote Turso (SQLite-compatible) persistence for stateless free hosting.
 - Password authentication, server-side revocable sessions, HttpOnly cookies, role-based authorization, login/signup throttling, and same-origin/allowlisted-origin write protection.
 - Dynamic admin-managed categories.
@@ -36,13 +36,13 @@ Open `index.html` through a local static server, enter the API URL, and register
 
 ## Free preview deployment
 
-A Render Blueprint is provided in `render.yaml` for the `service-marketplace-v1` branch. It runs the FastAPI API on Render's free web-service tier and stores data in Turso rather than Render's ephemeral filesystem. Render's free service sleeps after inactivity, so the first request may take about a minute to wake. This is a preview/testing arrangement, not a production SLA.
+A Render Blueprint is provided in `render.yaml` for the `service-marketplace-v1` branch. It serves both the Arabic UI (`/`) and FastAPI routes from one Render web service, so browser sessions are same-origin and no API URL or cross-site cookie configuration is needed. Data is stored in Turso rather than Render's ephemeral filesystem. Render's free service sleeps after inactivity, so the first request may take about a minute to wake. This is a preview/testing arrangement, not a production SLA.
 
 1. Create a free Turso database and obtain its database URL and auth token.
 2. Connect `zopair/inwork` to Render and deploy the Blueprint from `render.yaml`.
 3. Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` when Render prompts for the unsynchronized secrets.
 4. Keep `INWORK_ALLOWED_ORIGINS=https://zopair.github.io` and `INWORK_COOKIE_SAMESITE=none`; the blueprint sets these values.
-5. Copy the generated `onrender.com` service URL into the API URL field in the preview UI.
+5. Open the generated `onrender.com` service URL. The UI and API share the same origin; leave the optional API URL field empty.
 6. Use `INWORK_ADMIN_BOOTSTRAP_TOKEN` once to create the first admin, then remove that secret from the service environment.
 
 Do not select Render Postgres for durable free storage: its free database expires after 30 days. Do not store SQLite files on a Render free web service; its filesystem is ephemeral.
