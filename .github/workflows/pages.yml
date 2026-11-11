@@ -1,23 +1,88 @@
 name: Deploy InWork Beta to GitHub Pages
+
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
 concurrency:
-  group: pages
+  group: inwork-pages-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
+  validate-site:
+    name: Validate static PWA payload
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required site files
+        run: |
+          set -euo pipefail
+          test -s mobile/index.html
+          test -s manifest.webmanifest
+          test -s sw.js
+      - name: Validate manifest JSON
+        run: python -m json.tool manifest.webmanifest > /dev/null
+      - name: Verify local app shell references
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urlsplit
+
+          root = Path('.')
+          class Assets(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.refs = []
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  for key in ('src', 'href'):
+                      value = attrs.get(key)
+                      if value:
+                          self.refs.append(value)
+
+          parser = Assets()
+          parser.feed((root / 'mobile/index.html').read_text(encoding='utf-8'))
+          missing = []
+          for value in parser.refs:
+              parsed = urlsplit(value)
+              if parsed.scheme or parsed.netloc or value.startswith(('#', 'data:')):
+                  continue
+              path = parsed.path.lstrip('/')
+              if path and not (root / 'mobile' / path).is_file() and not (root / path).is_file():
+                  missing.append(value)
+          assert not missing, f'Missing local app assets: {missing}'
+          print(f'Validated {len(parser.refs)} app-shell references.')
+          PY
+      - name: Assemble deployable site
+        run: |
+          mkdir -p site
+          cp mobile/index.html site/index.html
+          cp manifest.webmanifest site/manifest.webmanifest
+          cp sw.js site/sw.js
+          test -s site/index.html
+
   deploy:
+    name: Deploy GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: validate-site
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - name: Assemble web app
         run: |
